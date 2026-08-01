@@ -31,7 +31,7 @@ Last updated: 2026-08-01
 - 虚拟内存：知道换页和文件映射，缺少 TLB、页表、page fault 与非法访问处理的完整链路。
 - 网络排障：能区分网络侧和服务端资源侧，但缺少分层指标体系。
 - AllReduce：正确理解数据并行中的梯度聚合与模型同步目的。
-- GPU 执行模型：未掌握。
+- GPU 执行模型：初始诊断时未掌握；本次学习后能解释 Grid、Block、Warp、Thread 的关系，待间隔复测。
 - KV Cache：理解 K/V 在逐 token 解码中的复用和加速作用，尚未涉及显存与调度细节。
 
 ## Recent Progress

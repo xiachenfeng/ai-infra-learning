@@ -4,6 +4,8 @@
 - Topic: GPU 执行模型入门
 - Duration: 未记录
 
+> Completion note: Knowledge Extraction 和相关状态更新为课后补记，仅整理本次 session 已产生的证据；补记过程没有学习新内容、没有新增答题，也没有产生新的掌握度证据。
+
 ## Learning Goals
 
 - 理解 kernel 从 CPU 提交到 GPU 执行的基本过程。
@@ -32,7 +34,7 @@
 
 ## Evaluation
 
-已掌握 GPU 执行模型的核心层级关系，能够完成基础线程索引和 Warp 数量计算，也能判断简单的 Warp Divergence 与 Block 同步边界。对 PyTorch eager execution 与 CUDA asynchronous execution 的区别经过纠正后能够理解，但仍需通过实际计时实验巩固。
+能够用自己的语言解释 GPU 执行模型的核心层级关系，完成基础线程索引和 Warp 数量计算，也能判断简单的 Warp Divergence 与 Block 同步边界。根据 0–4 掌握度规则，本次只评为“能够解释”，不因一次学习直接评为应用级。对 PyTorch eager execution 与 CUDA asynchronous execution 的区别尚未稳定，需要独立复述和实际计时实验。
 
 ## New Knowledge
 
@@ -50,8 +52,17 @@
 
 ## Mastery Changes
 
-- GPU Execution Model: 0 → 3
+- GPU Execution Model: 0 → 2
 - CUDA Kernel: 0 → 2
+
+## Knowledge Extraction
+
+- 正式知识：`knowledge/canonical/gpu-execution-hierarchy.md`
+  - 依据：层级计算、全局索引、Warp Divergence、Block 同步范围均有正确回答，且能够综合复述。
+- 候选知识：`knowledge/candidates/cuda-asynchronous-execution.md`
+  - 原因：形成了有价值的纠正性理解，但综合复述仍混淆 GPU 自行完成与 CPU 同步等待，且尚无代码实验。
+- 未沉淀：SM 调度、occupancy、GPU memory hierarchy，以及用多个 kernel 边界实现全 Grid 阶段同步。
+  - 原因：本次只提及名称或给出说明，没有完成独立回答或实验，不足以形成知识条目。
 
 ## Files Updated
 
@@ -61,6 +72,8 @@
 - `state/mistakes.md`
 - `state/review-queue.md`
 - `state/answer-history.csv`
+- `knowledge/canonical/gpu-execution-hierarchy.md`
+- `knowledge/candidates/cuda-asynchronous-execution.md`
 
 ## Next Review
 
