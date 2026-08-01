@@ -1,0 +1,6 @@
+date,session,concept,question_type,difficulty,correctness,completeness,transfer,confidence,mistakes
+2026-08-01,gpu-execution-model,GPU execution hierarchy,calculation,1,1.0,1.0,1.0,high,
+2026-08-01,gpu-execution-model,global thread index,calculation,1,1.0,1.0,1.0,high,
+2026-08-01,gpu-execution-model,warp divergence,concept,2,1.0,1.0,0.8,high,
+2026-08-01,gpu-execution-model,block synchronization,concept,2,1.0,0.8,0.8,high,
+2026-08-01,gpu-execution-model,CUDA asynchronous execution,concept,2,0.5,0.6,0.5,medium,将同步误认为触发 GPU 完成计算
