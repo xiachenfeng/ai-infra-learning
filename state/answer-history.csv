@@ -4,3 +4,9 @@ date,session,concept,question_type,difficulty,correctness,completeness,transfer,
 2026-08-01,gpu-execution-model,warp divergence,concept,2,1.0,1.0,0.8,high,
 2026-08-01,gpu-execution-model,block synchronization,concept,2,1.0,0.8,0.8,high,
 2026-08-01,gpu-execution-model,CUDA asynchronous execution,concept,2,0.5,0.6,0.5,medium,将同步误认为触发 GPU 完成计算
+2026-08-03,gpu-hierarchy-review,GPU execution hierarchy,explanation,2,3,3,2,75,未主动定义 Thread
+2026-08-03,gpu-hierarchy-review,LLM request to GPU mapping,transfer,3,3,3,3,75,经引导后说明多对多映射
+2026-08-03,gpu-hierarchy-review,Warp divergence,analysis,3,4,4,3,75,
+2026-08-03,gpu-hierarchy-review,Cross-block synchronization,analysis,3,4,3,3,75,
+2026-08-03,gpu-hierarchy-review,Thread versus Warp count,concept,2,2,3,2,80,曾把 8 个 Warp 误认为 8 个逻辑执行实例
+2026-08-03,gpu-hierarchy-review,LLM continuous batching,transfer,3,3,3,2,80,初始未识别权重复用和 kernel launch 开销

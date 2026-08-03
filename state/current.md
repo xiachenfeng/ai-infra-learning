@@ -1,6 +1,6 @@
 # Current Learning State
 
-Last updated: 2026-08-01
+Last updated: 2026-08-03
 
 ## Long-term Goal
 
@@ -23,7 +23,7 @@ Last updated: 2026-08-01
 
 ## Current Focus
 
-通过 PyTorch GPU 实验观察异步执行、正确计时和不同计算规模的 CPU/GPU 表现。
+验证 PyTorch eager execution 与 CUDA asynchronous execution，并完成正确计时实验。
 
 ## Diagnostic Summary
 
@@ -42,7 +42,9 @@ Last updated: 2026-08-01
 - 完成 GPU 执行模型入门学习，掌握 Grid、Block、Warp、Thread 的关系。
 - 能够判断简单的 Warp Divergence 和 Block 同步边界。
 - 区分了 PyTorch eager execution 与 CUDA asynchronous execution。
+- 完成 Grid、Block、Thread、Warp 间隔复测，能够分析部分有效 Warp 和跨 Block 调度死锁。
+- 能解释 LLM 用户请求与 kernel/Grid 的多对多关系，并初步理解 Continuous Batching 的吞吐—延迟权衡。
 
 ## Next Recommended Action
 
-下次学习开始时，先不查资料复习 Warp、Grid、Block、Thread 的关系与区别；复测通过后，再进入第一周 Session 2，完成 PyTorch GPU 同步计时实验。
+优先验证候选知识 CUDA Asynchronous Execution；GPU 环境准备后比较无同步、仅前同步、前后同步和 CUDA Event 计时。

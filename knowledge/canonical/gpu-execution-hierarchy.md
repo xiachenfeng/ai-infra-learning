@@ -1,8 +1,8 @@
 # GPU Execution Hierarchy
 
 - Status: 正式知识
-- Evidence: `sessions/2026-08-01-gpu-execution-model.md`
-- Last verified: 2026-08-01
+- Evidence: `sessions/2026-08-01-gpu-execution-model.md`, `sessions/2026-08-03-gpu-hierarchy-review.md`
+- Last verified: 2026-08-03
 
 ## 一句话定义
 
@@ -24,13 +24,15 @@
 
 - Grid：一次 kernel launch 创建的全部 Thread 集合。
 - Block：Grid 的分块，是 shared memory 和局部同步的重要边界。
-- Thread：kernel 的一个逻辑执行实例，通过索引选择要处理的数据。
+- Thread：kernel 的一个逻辑执行实例，通过索引选择要处理的数据；每个 Thread 有自己的 `threadIdx` 和逻辑执行状态。
 
 程序员直接指定 Grid 和 Block 的维度，由此确定 Thread 数量。
 
 ### Warp
 
 Warp 是 NVIDIA GPU 的硬件执行分组，不是程序员在 Grid 与 Block 之间额外创建的对象。同一 Block 内连续的 Thread 通常每 32 个组成一个 Warp。
+
+Warp 不能跨 Block 组合。若一个 Block 有 48 个 Thread，硬件仍形成两个 32-lane Warp：第一个有 32 个有效 Thread，第二个只有 16 个有效 Thread，而不是创建一个“16 Thread 的 Warp”。
 
 准确的关系是：
 
@@ -42,6 +44,8 @@ Grid → Block → Thread
 ### Block 同步边界
 
 同一 Block 内的 Thread 可以通过 `__syncthreads()` 建立屏障。不同 Block 可能位于不同 SM，也不能假设执行先后顺序，因此普通 kernel 中不能用 `__syncthreads()` 跨 Block 同步。
+
+一个 Block 在执行期间驻留于一个 SM。Grid 中的 Block 数可能远多于 GPU 同时可驻留的 Block 数；如果已驻留 Block 等待尚未被调度的 Block，已驻留 Block 不释放资源，剩余 Block 又无法运行，可能形成死锁。这也是普通 kernel 不提供全 Grid 屏障的重要原因。
 
 ### Warp Divergence
 
@@ -68,6 +72,7 @@ Block 中包含多个 Thread
 - 总 Thread 数至少要覆盖数据规模，超出的 Thread 必须经过边界检查。
 - Thread 数不是 32 的整数倍时，最后一个 Warp 可能只有部分有效 Thread。
 - 同一 Warp 内的分支发散会降低执行资源利用率。
+- Warp 不会跨 Block 拼接，因此两个各含 16 个 Thread 的 Block 会各自形成一个部分有效的 Warp。
 
 ## 最小示例
 
@@ -100,6 +105,7 @@ int blocks = (1000 + 256 - 1) / 256;  // 4
 - 所有 Thread 本来就运行同一份 kernel 代码；Warp Divergence 讨论的是同一 Warp 内是否选择不同控制流路径。
 - `__syncthreads()` 只能同步同一 Block 内的 Thread。
 - 多启动的 Thread 不能直接访问超出数据范围的元素，必须做边界检查。
+- Thread 数决定逻辑执行实例数；Warp 数只描述硬件如何把这些 Thread 成组执行。例如 256 个 Thread 是 256 个逻辑实例，而不是 8 个逻辑实例。
 
 ## 与相关技术的区别
 
@@ -107,13 +113,18 @@ int blocks = (1000 + 256 - 1) / 256;  // 4
 - Warp 属于 NVIDIA GPU 执行模型。
 - Block 是协作和同步边界；Warp 是硬件发射与执行线程的分组。
 
+### 与 LLM Serving 请求的区别
+
+用户请求属于 serving scheduler 的逻辑层；Grid、Block、Thread、Warp 属于 kernel 执行层。一个用户的一次 Decode step 会经过许多 kernel/Grid，而一个 batched Grid 也可能处理多个用户的数据，因此两者通常是多对多关系，不能固定映射为“一用户一 Warp/Block/Grid”。
+
 ## 代码或实验
 
 本次完成了索引、Thread 数和 Warp 数的推导，尚未运行真实 CUDA/PyTorch GPU 实验。
 
 ## 我曾经答错的地方
 
-本主题的层级、索引和同步范围问题均回答正确。用户主动要求下次再复习四个概念的关系与区别，以验证长期保持情况。
+- 曾把 256 个 Thread 组成的 8 个 Warp 误答为“8 个逻辑执行实例”。
+- 纠正后能说明：逻辑实例数由 Thread 数决定，Warp 是硬件对 Thread 的执行分组。
 
 ## 掌握证据
 
@@ -122,10 +133,12 @@ int blocks = (1000 + 256 - 1) / 256;  // 4
 - 正确判断简单的 Warp Divergence。
 - 正确指出不同 Block 不能通过 `__syncthreads()` 同步。
 - 能用自己的语言复述 Grid、Block、Warp、Thread 的关系。
+- 正确判断部分有效 Warp、Warp 不跨 Block，以及跨 Block 等待可能造成的调度死锁。
+- 能将执行模型迁移到 LLM serving，解释用户请求与 Grid/Warp 的多对多关系。
 
 ## 待验证内容
 
-- 间隔复测后能否不查资料准确区分四个概念。
+- Occupancy、寄存器和 shared memory 如何共同限制 SM 上的驻留 Block/Warp 数量。
 
 ## 参考资料
 
