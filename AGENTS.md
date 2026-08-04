@@ -136,6 +136,33 @@
 9. 展示所有修改文件及关键 diff。
 10. 不自动执行 Git commit。
 
+### Git Commit and Sync
+
+- 用户说“结束学习”或“保存进度”时：
+  - 执行完整的 Session End；
+  - 不自动执行 Git commit 或 Git push。
+
+- 用户说“提交并结束学习”时：
+  1. 执行完整的 Session End。
+  2. 检查 `git diff` 和 `git diff --check`。
+  3. 只暂存本次学习产生或修改的文件，不使用无范围的 `git add -A`。
+  4. 有文件变化时创建描述本次学习内容的 commit；没有变化时不创建空 commit。
+  5. 不执行 Git push。
+  6. 展示 commit 结果和最终 `git status -sb`。
+
+- 用户说“提交并同步，结束学习”时：
+  1. 执行完整的 Session End。
+  2. 确认当前分支、上游分支和 `origin` 指向预期仓库。
+  3. 检查 `git diff` 和 `git diff --check`。
+  4. 只暂存本次学习产生或修改的文件，不使用无范围的 `git add -A`。
+  5. 有文件变化时创建描述本次学习内容的 commit；没有变化时不创建空 commit。
+  6. 将当前分支推送到其对应的 `origin` 上游分支。
+  7. 如果发生认证失败、网络失败、远端不一致或 non-fast-forward：
+     - 不使用 force push；
+     - 不自动覆盖、变基或合并远端内容；
+     - 停止同步并报告具体原因。
+  8. 展示 commit、push 结果和最终 `git status -sb`。
+
 ### Knowledge Extraction
 
 每次结束学习时，必须执行知识提取检查，不能跳过。
