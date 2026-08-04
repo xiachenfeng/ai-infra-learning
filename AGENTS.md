@@ -165,28 +165,62 @@
 
 ### Knowledge Extraction
 
-每次结束学习时，必须执行知识提取检查，不能跳过。
+每次结束学习时，必须检查本次会话是否产生了可复用的知识增量。
+对每个知识点，只能选择以下一种处理结果：
+
+1. 写入或更新 Canonical Knowledge；
+2. 写入或更新 Knowledge Candidate；
+3. No Knowledge Change。
+
+必须在 Session End 摘要中列出所选结果、目标文件和判断依据。
 
 #### Canonical Knowledge
 
-满足条件时，写入或更新 `knowledge/`。
+仅当知识点同时满足以下条件时，写入或更新
+`knowledge/canonical/<concept-slug>.md`：
+
+1. 用户能够脱离提示，用自己的语言解释核心机制；
+2. 至少通过一道应用、故障分析、代码阅读或迁移题；
+3. 关键结论已有可靠资料、代码推导或实验结果支持；
+4. 当前不存在尚未解决、会影响核心结论的冲突或疑问；
+5. 内容具有跨会话复用价值，而不只是本次聊天摘要。
+
+写入前先检查现有 canonical 文件：
+
+- 已有对应主题时，合并和修订原文件，不创建重复条目；
+- 新知识与原内容冲突时，不直接覆盖，将冲突转为 Candidate；
+- 按 `templates/knowledge-card.md` 整理，并在“掌握证据”中记录
+  对应 session、题目或实验。
 
 #### Knowledge Candidate
 
-本次产生了有价值、但尚未充分验证的知识时：
+知识具有复用价值，但未满足全部 Canonical 条件时，写入或更新
+`knowledge/candidates/<concept-slug>.md`，至少记录：
 
-1. 写入或更新 `knowledge/candidates/<concept-slug>.md`；
-2. 记录尚未进入正式知识库的原因；
-3. 记录需要完成的测试、推导或实验；
-4. 将验证任务加入 `state/review-queue.md`。
+1. 当前候选结论；
+2. 尚未进入 Canonical 的具体原因；
+3. 已有证据及其来源；
+4. 尚需完成的题目、推导、资料核验或实验；
+5. 明确且可检查的转入 Canonical 条件。
 
-验证通过后，将内容合并到 `knowledge/canonical/`，
-并删除或标记对应候选条目为已完成。
+同时将未完成的验证任务加入 `state/review-queue.md`。
 
+验证通过后：
+
+1. 将验证后的内容合并到 `knowledge/canonical/`；
+2. 将候选条目标记为“已提升”，记录日期和目标 canonical 文件；
+3. 从 review queue 中删除已完成的验证任务；
+4. 默认保留候选文件作为演进记录，不直接删除。
 
 #### No Knowledge Change
 
-没有值得沉淀的新增知识时，明确说明原因。
+仅当本次会话没有产生新的、修正后的或得到进一步验证的可复用知识时使用。
+
+Session End 中必须说明原因，例如：
+
+- 本次仅复习，已有 canonical 内容仍然准确且完整；
+- 本次只有答题记录或进度变化，没有知识内容变化；
+- 讨论尚不足以形成结构化 Candidate。
 
 ---
 
