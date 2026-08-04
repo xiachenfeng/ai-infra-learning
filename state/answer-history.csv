@@ -10,3 +10,10 @@ date,session,concept,question_type,difficulty,correctness,completeness,transfer,
 2026-08-03,gpu-hierarchy-review,Cross-block synchronization,analysis,3,4,3,3,75,
 2026-08-03,gpu-hierarchy-review,Thread versus Warp count,concept,2,2,3,2,80,曾把 8 个 Warp 误认为 8 个逻辑执行实例
 2026-08-03,gpu-hierarchy-review,LLM continuous batching,transfer,3,3,3,2,80,初始未识别权重复用和 kernel launch 开销
+2026-08-04,cuda-streams-events,PyTorch eager and CUDA async,explanation,2,4,4,3,80,
+2026-08-04,cuda-streams-events,Stream ordering and dependencies,analysis,3,3,3,3,80,初始将 Python 顺序视为根本保证
+2026-08-04,cuda-streams-events,Wait versus synchronize,analysis,3,2,3,3,80,两次误认为 wait_stream 会阻塞 CPU
+2026-08-04,cuda-streams-events,CUDA Event timing,code-reading,3,3,3,3,80,初始添加不必要的 end.wait_event
+2026-08-04,cuda-streams-events,Benchmark interpretation,calculation,3,3,3,3,80,初始混用批量总时间与单次时间
+2026-08-04,cuda-streams-events,Event versus Stream dependency,transfer,4,4,3,4,80,
+2026-08-04,cuda-streams-events,Profiler concurrency timeline,analysis,4,3,3,3,80,将资源竞争表述为抢占

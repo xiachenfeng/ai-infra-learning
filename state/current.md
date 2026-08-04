@@ -1,6 +1,6 @@
 # Current Learning State
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Long-term Goal
 
@@ -23,7 +23,7 @@ Last updated: 2026-08-03
 
 ## Current Focus
 
-验证 PyTorch eager execution 与 CUDA asynchronous execution，并完成正确计时实验。
+理解 CUDA Stream、Event、跨 Stream 依赖和同步范围，并用真实 GPU 实验验证异步执行与并发时间线。
 
 ## Diagnostic Summary
 
@@ -44,7 +44,11 @@ Last updated: 2026-08-03
 - 区分了 PyTorch eager execution 与 CUDA asynchronous execution。
 - 完成 Grid、Block、Thread、Warp 间隔复测，能够分析部分有效 Warp 和跨 Block 调度死锁。
 - 能解释 LLM 用户请求与 kernel/Grid 的多对多关系，并初步理解 Continuous Batching 的吞吐—延迟权衡。
+- 在 RTX 3090 上完成 PyTorch CUDA 异步计时实验，验证未同步 CPU 计时主要测到任务提交时间。
+- 能区分 `wait_event()`、`wait_stream()` 与 Event/Stream/Device `synchronize()` 的等待对象和范围。
+- 用中间 Event 实验验证精确跨 Stream 依赖：等待 Event 不要求生产 Stream 的后续工作完成。
+- 用 PyTorch Profiler 观察两个 Stream 的 kernel 时间线，确认不同 Stream 允许并发，但大型 GEMM 仅出现部分重叠。
 
 ## Next Recommended Action
 
-优先验证候选知识 CUDA Asynchronous Execution；GPU 环境准备后比较无同步、仅前同步、前后同步和 CUDA Event 计时。
+先在 2026-08-06 间隔复测 Thread 与 Warp 数量区别，再学习多 Stream tensor 生命周期与 `record_stream()`；随后进入 GPU memory hierarchy。
