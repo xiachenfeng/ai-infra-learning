@@ -17,3 +17,26 @@ date,session,concept,question_type,difficulty,correctness,completeness,transfer,
 2026-08-04,cuda-streams-events,Benchmark interpretation,calculation,3,3,3,3,80,初始混用批量总时间与单次时间
 2026-08-04,cuda-streams-events,Event versus Stream dependency,transfer,4,4,3,4,80,
 2026-08-04,cuda-streams-events,Profiler concurrency timeline,analysis,4,3,3,3,80,将资源竞争表述为抢占
+2026-08-05,cuda-record-stream,CUDA tensor lifetime across streams,explanation,2,1,1,0,未提供,只关注显存已释放，未区分 Python 引用结束与非默认 Stream 上的 GPU 使用完成
+2026-08-05,cuda-record-stream,Safe CUDA memory reuse point,analysis,2,3,2,1,80,正确选择最后一次跨 Stream 使用完成，但未解释异步时间线与 allocator 所需的使用记录
+2026-08-05,cuda-record-stream,Allocator awareness of side-stream use,design,3,2,1,1,75,提出显式分配释放接口，但未解决 CPU release 早于异步 Stream 实际使用完成的问题
+2026-08-05,cuda-record-stream,Event-gated CUDA memory reuse,analysis,2,4,3,2,70,正确识别 allocator 必须等待记录在使用 Stream 上的 Event 完成
+2026-08-05,cuda-record-stream,record_stream versus execution dependency,analysis,3,3,1,1,50,正确判断 record_stream 不能保证生产完成，但未解释其仅管理内存生命周期以及所需的 Stream 依赖方向
+2026-08-05,cuda-record-stream,Producer-consumer stream dependency,analysis,2,4,2,2,未提供,正确选择消费者 Stream 等待生产 Stream，但未主动解释等待对象
+2026-08-05,cuda-record-stream,Missing record_stream failure mode,analysis,3,3,2,2,未提供,正确识别 y 可能读到错误数据，但误以为 del x 可能使已提交计算不完成
+2026-08-05,cuda-record-stream,Cross-stream memory reuse race,analysis,3,4,3,3,未提供,正确排列释放复用覆盖读取的竞态时间线
+2026-08-05,cuda-record-stream,Manual lifetime synchronization,transfer,4,4,3,3,60,正确提出创建 Stream 等待侧 Stream，但原因说明较简略
+2026-08-05,cuda-record-stream,Wait placement and overlap,analysis,4,1,1,1,未提供,误判为死锁，尚未区分 wait_stream 只等待调用时已提交工作与环形依赖
+2026-08-06,gpu-execution-review,Thread versus Warp count,calculation,3,2,2,2,75,漏答 Grid Thread 总数；将 100 Thread Block 最后一个 Warp 的有效 Thread 数误算为 6；未说明 Warp 是 Block 内硬件执行分组
+2026-08-06,gpu-execution-review,Partial Warp active threads,calculation,2,4,4,3,80,正确计算 100 Thread Block 的前三个完整 Warp 覆盖 96 个 Thread，最后一个 Warp 有 4 个有效 Thread
+2026-08-06,gpu-execution-review,Warp confinement to Block,explanation,3,3,2,2,80,正确选择 Warp 是 Block 内硬件执行分组，但未解释 __syncthreads 范围不是 Warp 分组规则的原因
+2026-08-06,gpu-execution-review,Warp grouping versus Block synchronization,explanation,3,1,1,1,80,再次以 Block 内可同步解释 Warp 不跨 Block，未区分共同边界的两个结果与因果关系
+2026-08-06,gpu-execution-review,Warp Block-boundary counterfactual,transfer,3,4,4,3,80,正确判断即使没有 __syncthreads Warp 仍不能跨 Block，并指出 Block 是 Warp 分组边界
+2026-08-06,gpu-execution-review,Thread logical instances versus Warp groups,explanation,3,4,3,3,80,正确区分 512 个 Thread 逻辑实例与 16 个 Warp 硬件执行分组
+2026-08-06,cuda-record-stream,Wait placement and concurrency overlap,analysis,4,4,4,3,80,正确判断延迟创建 Stream 对侧 Stream 的等待可保留独立工作的重叠机会
+2026-08-06,cuda-record-stream,Manual synchronization and allocator reuse,analysis,4,4,4,3,80,正确说明复用内存后的写入位于创建 Stream 的等待节点之后，因而不会覆盖侧 Stream 的未完成读取
+2026-08-06,cuda-record-stream,wait_stream versus record_stream,explanation,3,0,0,0,未提供,未能区分 Stream 执行依赖与 Tensor 显存生命周期登记
+2026-08-06,cuda-record-stream,wait_stream versus record_stream recognition,concept,2,4,4,2,60,正确匹配 wait_stream 管执行顺序、record_stream 管 allocator 的显存生命周期认知
+2026-08-06,cuda-record-stream,record_stream completion tracking,explanation,3,2,1,1,未提供,正确判断 CPU 不阻塞，但误以为主要依赖引用计数，尚未说明 allocator 通过 recorded Stream 的 CUDA Event 判断完成
+2026-08-06,cuda-record-stream,Asynchronous deallocation causal chain,explanation,3,3,2,2,未提供,正确理解 Stream 工作与 Event 按序异步完成，但将 Event 完成误表述为解除 Python 引用；实际是解除显存块 pending 状态
+2026-08-06,cuda-record-stream,Deferred CUDA memory reclamation order,analysis,3,4,4,3,90,正确识别引用归零先触发回收流程，allocator Event 完成后显存块才可复用

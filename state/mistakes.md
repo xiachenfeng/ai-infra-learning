@@ -16,7 +16,16 @@
 - 原回答：一个 Block 有 256 个 Thread、Warp 大小为 32 时，有 8 个逻辑执行实例。
 - 错误原因：把硬件执行分组数量误当成 kernel 的逻辑执行实例数量。
 - 正确理解：256 个 Thread 对应 256 个逻辑执行实例；硬件把它们组成 8 个 Warp 发射指令。
-- 是否已复测：当场追问后通过，需 2026-08-06 间隔复测。
+- 是否已复测：2026-08-06 间隔复测通过。能够正确区分 512 个 Thread 逻辑实例与 16 个 Warp 硬件执行分组。
+
+## 2026-08-06：部分 Warp 计数与 Block 边界因果
+
+- 日期：2026-08-06
+- 知识点：部分有效 Warp、Warp 与 Block 的关系
+- 原回答：100 个 Thread 的 Block 中，最后一个 Warp 有 6 个有效 Thread；Warp 不能跨 Block 是因为 Block 内可以同步。
+- 错误原因：部分 Warp 余数计算错误，并把 `__syncthreads()` 的作用范围误当成 Warp 硬件分组规则的原因。
+- 正确理解：前三个完整 Warp 覆盖 96 个 Thread，最后一个 Warp 有 4 个有效 Thread；Warp 是同一 Block 内 Thread 的硬件执行分组，Block 同步范围和 Warp 分组边界都是 Block 作为调度与协作边界的结果。
+- 是否已复测：2026-08-06 通过反事实题和独立计数题复测。即使 kernel 不调用 `__syncthreads()`，Warp 仍不能跨 Block。
 
 ## 2026-08-03：Continuous Batching 的吞吐来源
 
@@ -44,6 +53,24 @@
 - 错误原因：忽略同一 Stream 已保证 Event 与 kernel 的顺序，并混用了批量总时间与单次时间。
 - 正确理解：同一 Stream 中按 `start.record()`、kernel、`end.record()` 排队即可建立区间，CPU 在读取 elapsed time 前等待 `end`；比较倍率时必须统一为总时间或单次时间。本次未同步 CPU 计时约低估 `582.9 / 0.947 ≈ 615` 倍。
 - 是否已复测：2026-08-04 通过。经追问后纠正倍率，并能解释预热、CPU 时钟噪声、Device 同步污染和 CUDA Event 的测量范围。
+
+## 2026-08-05：过早放置反向 Stream 等待
+
+- 日期：2026-08-05
+- 知识点：手动管理跨 Stream Tensor 生命周期
+- 原回答：创建 Stream 在侧 Stream 提交工作后立即反向等待，可能造成死锁。
+- 错误原因：没有区分 `wait_stream()` 只等待调用时对方已经提交的工作，把有序的双向依赖误认为无法解除的循环依赖。
+- 正确理解：先有创建 Stream 的生产工作，侧 Stream 等待并消费，随后创建 Stream 再等待侧 Stream，依赖链可以依次推进，不会死锁；但反向等待放得过早会阻塞创建 Stream 后续的独立工作，损失重叠机会。
+- 是否已复测：2026-08-06 通过。能够比较提前等待和释放前等待两个完整版本，并正确指出后者保留更多并发机会。
+
+## 2026-08-06：`wait_stream()` 与 `record_stream()` 混淆
+
+- 日期：2026-08-06
+- 知识点：跨 Stream 数据依赖与 Tensor 显存生命周期
+- 原回答：不清楚两个 API 的区别；一度认为 `record_stream()` 主要依靠引用计数判断 GPU 是否用完显存。
+- 错误原因：混淆了 Stream 工作顺序、Python/Storage 引用归零和 allocator 判断 GPU 完成这三个层次。
+- 正确理解：`wait_stream()` 给目标 Stream 的后续工作建立执行依赖；`record_stream()` 登记显存块被哪些侧 Stream 使用。最后一个 Storage 引用消失后，allocator 在已登记 Stream 上记录 CUDA Event，Event 完成后显存块才从 pending 变为可复用。
+- 是否已复测：2026-08-06 完成机制顺序复测，正确选择 `del x → allocator 记录 Event → kernel 完成 → Event 完成 → 显存可复用`；双侧 Stream 场景尚未复测。
 
 每条错误应包含：
 

@@ -148,9 +148,9 @@ PyTorch Profiler 观察到两个 CUDA Stream ID（21、25）上的 10 个矩阵�
 - 能正确选择 Event、Stream 或 Device 同步范围。
 - 已运行同步计时、CUDA Event、`wait_event()`、`wait_stream()` 和 profiler 实验，并解释结果。
 
-## 待学习内容
+## 待学习与验证内容
 
-- 多 Stream Tensor 生命周期和 `record_stream()`。
+- 多 Stream Tensor 生命周期和 `record_stream()` 已形成候选知识，待双侧 Stream 题与真实 GPU 实验验证；见 `knowledge/candidates/cuda-record-stream-and-tensor-lifetime.md`。
 - Stream priority、CUDA Graph 与更复杂的跨设备依赖。
 - 使用 Nsight Systems/Compute 分析 launch、occupancy、memory 与 kernel overlap。
 

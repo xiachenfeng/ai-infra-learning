@@ -1,6 +1,6 @@
 # Current Learning State
 
-Last updated: 2026-08-04
+Last updated: 2026-08-06
 
 ## Long-term Goal
 
@@ -23,7 +23,7 @@ Last updated: 2026-08-04
 
 ## Current Focus
 
-理解 CUDA Stream、Event、跨 Stream 依赖和同步范围，并用真实 GPU 实验验证异步执行与并发时间线。
+理解多 Stream Tensor 生命周期、PyTorch CUDA caching allocator 与 `record_stream()`，并区分数据依赖和显存生命周期依赖。
 
 ## Diagnostic Summary
 
@@ -48,7 +48,11 @@ Last updated: 2026-08-04
 - 能区分 `wait_event()`、`wait_stream()` 与 Event/Stream/Device `synchronize()` 的等待对象和范围。
 - 用中间 Event 实验验证精确跨 Stream 依赖：等待 Event 不要求生产 Stream 的后续工作完成。
 - 用 PyTorch Profiler 观察两个 Stream 的 kernel 时间线，确认不同 Stream 允许并发，但大型 GEMM 仅出现部分重叠。
+- 通过 2026-08-06 间隔复测，能够区分 Thread 逻辑实例数与 Warp 硬件执行分组，并分析部分有效 Warp 和 Block 边界。
+- 能区分 `wait_stream()` 建立的执行依赖与 `record_stream()` 登记的显存生命周期。
+- 能分析 `del x`、allocator 延迟回收、内部 CUDA Event 完成和显存块重新可用的因果顺序。
+- 能分析手动同步方案中等待位置对并发重叠的影响，并解释创建 Stream 上的后续写入为何不会覆盖侧 Stream 的未完成读取。
 
 ## Next Recommended Action
 
-先在 2026-08-06 间隔复测 Thread 与 Warp 数量区别，再学习多 Stream tensor 生命周期与 `record_stream()`；随后进入 GPU memory hierarchy。
+2026-08-07 闭卷复测 wait API 与 synchronize API；2026-08-09 完成双侧 Stream 生命周期分析和 `record_stream()` 最小实验，验证通过后再进入 GPU memory hierarchy。
