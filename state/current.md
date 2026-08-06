@@ -1,6 +1,6 @@
 # Current Learning State
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## Long-term Goal
 
@@ -23,7 +23,7 @@ Last updated: 2026-08-06
 
 ## Current Focus
 
-理解多 Stream Tensor 生命周期、PyTorch CUDA caching allocator 与 `record_stream()`，并区分数据依赖和显存生命周期依赖。
+完成多 Stream Tensor 生命周期、PyTorch CUDA caching allocator 与 `record_stream()` 的迁移复测；下一步用最小 GPU 实验验证显存复用行为，然后进入 GPU memory hierarchy。
 
 ## Diagnostic Summary
 
@@ -52,7 +52,9 @@ Last updated: 2026-08-06
 - 能区分 `wait_stream()` 建立的执行依赖与 `record_stream()` 登记的显存生命周期。
 - 能分析 `del x`、allocator 延迟回收、内部 CUDA Event 完成和显存块重新可用的因果顺序。
 - 能分析手动同步方案中等待位置对并发重叠的影响，并解释创建 Stream 上的后续写入为何不会覆盖侧 Stream 的未完成读取。
+- 通过 2026-08-07 复测，能闭卷区分 `record`/`wait_event` 队列操作与 `synchronize()` CPU 阻塞，并能分析双侧 Stream、view alias、手动 Event 替代方案和 `record_stream()` 的保守性。
+- 能说明 `record_stream()` 不是精确位置依赖，而是 Storage 对 Stream 的生命周期登记；保护范围取决于 Tensor 释放时 recorded Stream 上已排队的工作。
 
 ## Next Recommended Action
 
-2026-08-07 闭卷复测 wait API 与 synchronize API；2026-08-09 完成双侧 Stream 生命周期分析和 `record_stream()` 最小实验，验证通过后再进入 GPU memory hierarchy。
+完成 `record_stream()` 最小 GPU 实验，观察缺少登记、使用 `record_stream()` 和手动 Event 三种方案的显存复用行为；实验后若结论稳定，将 CUDA Tensor Lifetime 候选知识提升为 canonical，并进入 GPU memory hierarchy。

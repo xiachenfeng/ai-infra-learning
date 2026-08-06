@@ -40,3 +40,14 @@ date,session,concept,question_type,difficulty,correctness,completeness,transfer,
 2026-08-06,cuda-record-stream,record_stream completion tracking,explanation,3,2,1,1,未提供,正确判断 CPU 不阻塞，但误以为主要依赖引用计数，尚未说明 allocator 通过 recorded Stream 的 CUDA Event 判断完成
 2026-08-06,cuda-record-stream,Asynchronous deallocation causal chain,explanation,3,3,2,2,未提供,正确理解 Stream 工作与 Event 按序异步完成，但将 Event 完成误表述为解除 Python 引用；实际是解除显存块 pending 状态
 2026-08-06,cuda-record-stream,Deferred CUDA memory reclamation order,analysis,3,4,4,3,90,正确识别引用归零先触发回收流程，allocator Event 完成后显存块才可复用
+2026-08-06,cuda-stream-wait-sync-review,CUDA Stream Wait vs Synchronize,closed-book analysis,3,4,3,2,未提供,正确区分 record/wait_event 为队列操作且 synchronize 阻塞 CPU；回答较简略但核心等待对象正确
+2026-08-06,cuda-record-stream,double side stream tensor lifetime,transfer,4,4,3,3,未提供,正确判断 wait_stream 不保护 del 后显存生命周期；能指出需要分别 record_stream 到 s1 和 s2，放置描述略粗但方向正确
+2026-08-06,cuda-record-stream,missing one recorded stream risk,analysis,4,4,3,3,未提供,正确指出只保护 s1 且 s2 可能读到错误数据；未展开 allocator pending/Event 机制
+2026-08-06,cuda-record-stream,record_stream release-time boundary,transfer,4,4,4,3,未提供,正确指出保护边界取决于 del 时 recorded Stream 上已提交的工作，而非 record_stream 调用位置本身
+2026-08-06,cuda-record-stream,record_stream cannot protect post-free queued work,transfer,4,4,4,3,未提供,正确指出 del 时尚未提交的后续 Stream 使用不受之前释放流程保护
+2026-08-06,cuda-record-stream,view alias shared storage lifetime,analysis,4,2,2,2,未提供,初答误认为 del x 会触发共享 storage 回收；经引导后意识到 alias_x 仍持有 storage 引用
+2026-08-06,cuda-record-stream,record_stream on alias shared storage,transfer,4,4,3,3,未提供,正确判断 x 与 alias_x 共享 storage 时，在任一别名上 record_stream 都能登记同一底层显存
+2026-08-06,cuda-record-stream,manual event replacement last-use point,transfer,4,4,3,3,未提供,正确选择在侧 Stream 最后一次使用 x 后记录 Event；能指出 A 过早记录 done 无法保护后续 y2
+2026-08-06,cuda-record-stream,record_stream conservative release boundary,analysis,4,4,4,3,未提供,正确指出 record_stream 可能等待释放时 recorded Stream 上已提交的无关工作，体现保守性
+2026-08-07,cuda-record-stream,manual event wait placement and overlap,analysis,4,3,3,3,未提供,正确选择释放前等待以保留并发；经追问补全 A 会让 s0 后续独立工作在 GPU 执行顺序上等待 done
+2026-08-07,cuda-record-stream,mixed wait record alias concurrency diagnosis,diagnosis,5,4,4,4,未提供,正确区分 wait_stream 管数据就绪、只登记 s1 不保护 s2、record_stream 不会在调用处过早串行化 s0 独立工作

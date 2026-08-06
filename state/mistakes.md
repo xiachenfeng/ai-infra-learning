@@ -43,7 +43,7 @@
 - 原回答：`wait_event()` 中 CPU 需要停下来；`wait_stream()` 会阻塞 CPU。
 - 错误原因：没有区分“向目标 Stream 插入 GPU 依赖”和“调用线程同步等待 GPU”。
 - 正确理解：`wait_event()` 和 `wait_stream()` 都只约束目标 Stream 后续提交的工作，调用本身通常很快返回；`Event.synchronize()`、`Stream.synchronize()` 和 `torch.cuda.synchronize()` 才分别使 CPU 等待 Event、Stream 或整个设备范围的工作。
-- 是否已复测：2026-08-04 通过。选择题能正确识别 CPU 阻塞 API，并用实验测得 `wait_event()` 和 `wait_stream()` 调用仅约 0.016 ms 与 0.064 ms。
+- 是否已复测：2026-08-07 闭卷复测通过。能正确区分 `event.record()`、`wait_event()` 为队列操作，`Stream.synchronize()` 为 CPU 阻塞等待，并说明 `wait_event()` 等待的是 Event 之前的生产 Stream 工作。
 
 ## 2026-08-04：CUDA Event 计时与倍率计算
 
@@ -70,7 +70,16 @@
 - 原回答：不清楚两个 API 的区别；一度认为 `record_stream()` 主要依靠引用计数判断 GPU 是否用完显存。
 - 错误原因：混淆了 Stream 工作顺序、Python/Storage 引用归零和 allocator 判断 GPU 完成这三个层次。
 - 正确理解：`wait_stream()` 给目标 Stream 的后续工作建立执行依赖；`record_stream()` 登记显存块被哪些侧 Stream 使用。最后一个 Storage 引用消失后，allocator 在已登记 Stream 上记录 CUDA Event，Event 完成后显存块才从 pending 变为可复用。
-- 是否已复测：2026-08-06 完成机制顺序复测，正确选择 `del x → allocator 记录 Event → kernel 完成 → Event 完成 → 显存可复用`；双侧 Stream 场景尚未复测。
+- 是否已复测：2026-08-07 通过。能分析双侧 Stream 需要分别登记，漏登 `s2` 只保护 `s1`；能说明 `record_stream()` 的保护边界取决于释放时 recorded Stream 上已排队工作，且手动 Event 必须放在最后一次使用之后。
+
+## 2026-08-07：把 `del x` 误认为共享 Storage 最后引用释放
+
+- 日期：2026-08-07
+- 知识点：View alias 与 Tensor Storage 生命周期
+- 原回答：`alias_x = x.view(-1)` 后，`del x` 会使底层 storage 进入 allocator 回收流程；真正触发回收的是 `s1` 上使用完 `alias_x`。
+- 错误原因：混淆了 Python 变量名、Tensor 对象和共享 Storage 引用；把 GPU 使用完成误认为触发 allocator 回收的条件。
+- 正确理解：`del x` 只删除一个 Tensor 引用。只要 `alias_x` 仍然持有同一 storage，底层显存不会进入 allocator 回收流程；真正触发回收的是最后一个持有该 Storage 的 Tensor/Storage 引用消失。`record_stream()` 绑定的是 Storage 与 Stream 的关系，不是变量名与 Stream 的关系。
+- 是否已复测：2026-08-07 当场复测通过。能够判断 `x.record_stream(s1)` 可以保护 `alias_x` 读取的同一块共享 storage。
 
 每条错误应包含：
 

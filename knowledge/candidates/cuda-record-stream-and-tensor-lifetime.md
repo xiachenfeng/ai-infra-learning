@@ -1,8 +1,8 @@
 # CUDA `record_stream()` 与跨 Stream Tensor 生命周期
 
 - Status: 候选知识，尚未验证
-- Evidence: `sessions/2026-08-06-cuda-record-stream-lifetime.md`
-- Last discussed: 2026-08-06
+- Evidence: `sessions/2026-08-06-cuda-record-stream-lifetime.md`, `sessions/2026-08-07-cuda-record-stream-transfer.md`
+- Last discussed: 2026-08-07
 - Related canonical: `knowledge/canonical/cuda-streams-events-and-timing.md`
 
 ## 一句话定义
@@ -28,6 +28,10 @@ PyTorch CUDA 操作异步执行。CPU 可以在侧 Stream 尚未读完 Tensor �
 2. 显存生命周期：使用 `record_stream()` 登记每个侧 Stream，或手动把最后一次侧 Stream 使用同步回创建 Stream。
 
 `record_stream()` 调用本身主要登记显存块的 Stream 使用关系，不等同于 CPU 同步，也不自动建立生产者到消费者的数据依赖。
+
+`record_stream()` 不是精确位置依赖，而是 Storage 对 Stream 的生命周期登记；一次释放触发的保护范围，取决于 Tensor 释放时 recorded Stream 上已经排队了哪些工作，不覆盖释放之后才提交的使用。
+
+`record_stream()` 绑定的是 Storage 与 Stream 的关系，不是变量名与 Stream 的关系。若 `x` 与 `alias_x = x.view(...)` 共享 Storage，在任一别名上调用 `record_stream(s1)` 都是在同一块底层显存上登记 `s1`。
 
 ## 核心机制
 
@@ -105,12 +109,16 @@ del x
 
 手动方案可能更早复用显存，但漏掉任何后续使用都会产生竞态。若使用 `s0.wait_stream(s1)`，等待放得过早会损失创建 Stream 与侧 Stream 的重叠机会。
 
+手动 Event 替代 `record_stream()` 时，Event 必须记录在侧 Stream 对该 Storage 的最后一次使用之后；等待点应尽量靠近生命周期释放边界，而不是提前挡住无关的独立工作。能精确证明最后使用点时，手动 Event 更精准；不能稳定证明最后使用点时，`record_stream()` 更省心但可能更保守。
+
 ## 常见误解
 
 - `record_stream()` 不是让侧 Stream 等待创建 Stream；
 - `record_stream()` 不是 CPU 阻塞 API；
 - 调用 `record_stream()` 时不等于立即在该位置记录最终回收 Event；
+- `record_stream()` 不会精确标记某个 kernel 或代码区间，而是让 allocator 在 Tensor 释放时把 recorded Stream 上已排队工作纳入显存复用保护范围；
 - `del x` 不要求 GPU 已经完成，但显存块在 GPU 使用完成前不能复用；
+- `del` 某个 Tensor 变量不等于释放显存；只有共享 Storage 的最后一个引用消失，allocator 才进入回收流程；
 - Event 完成不会解除 Python 引用，而是解除 allocator 对显存块的 pending 状态；
 - 只登记一个侧 Stream 不能保护其他未登记 Stream 对同一显存的使用。
 
@@ -128,21 +136,25 @@ del x
 - 2026-08-06 能正确分析手动创建 Stream 等待侧 Stream 时，复用显存后的写入为何不会覆盖未完成读取；
 - 能比较过早等待与释放前等待，判断后者保留更多并发机会；
 - 能正确排列 `del x → allocator 记录 Event → kernel 完成 → Event 完成 → 显存可复用`；
+- 2026-08-06 能独立判断 `record_stream()` 后、`del x` 前继续在 recorded Stream 上提交的 `x` 使用仍被保护，并说明保护边界取决于释放时 recorded Stream 上已排队的工作；
+- 2026-08-07 能闭卷区分 `wait_event()` 队列依赖和 `synchronize()` CPU 阻塞；
+- 2026-08-07 能独立完成双侧 Stream 迁移诊断，指出只登记 `s1` 不保护 `s2`；
+- 2026-08-07 能分析 view alias 共享 Storage，判断在任一别名上 `record_stream()` 都能登记同一底层显存；
+- 2026-08-07 能设计手动 Event 替代方案，指出 Event 应放在侧 Stream 最后一次使用之后，并能解释等待点放得过早会牺牲并发重叠；
+- 2026-08-07 能解释 `record_stream()` 的保守性：释放时 recorded Stream 上已排队的无关工作也可能延迟显存复用；
 - 关键机制已由 PyTorch 官方文档和 native allocator 源码结构支持。
 
 ## 尚未进入 Canonical 的原因
 
-- 最初无法独立区分 `wait_stream()` 与 `record_stream()`，核心机制主要在引导和解释后掌握；
-- 尚未完成两个侧 Stream 同时使用同一 Tensor 时的独立分析；
 - 尚未运行最小实验观察 `record_stream()` 对显存地址复用或 allocator 状态的影响；
-- 尚未独立比较 `record_stream()` 与精确手动 Event 的完整安全条件。
+- 尚未独立追踪 PyTorch native allocator 源码中 `record_stream()`、Event 记录和 pending block 回收的关键路径；
+- 本次虽通过多道迁移题，但尚未形成可复现实验结果，因此暂不提升为 Canonical。
 
 ## 尚需完成的验证
 
-1. 闭卷分析同一 Tensor 被两个侧 Stream 使用时需要登记哪些 Stream；
-2. 完成最小 GPU 实验，对比缺少登记、使用 `record_stream()` 和手动 Event 三种方案；
-3. 解释别名/View 共享 Storage 时，最后一个引用与显存回收的关系；
-4. 独立说明 `record_stream()` 的安全性成本和手动 Event 的适用条件。
+1. 完成最小 GPU 实验，对比缺少登记、使用 `record_stream()` 和手动 Event 三种方案；
+2. 追踪 PyTorch native CUDACachingAllocator 中 `record_stream()` 到 pending block 释放的关键路径；
+3. 将实验或源码追踪结果整理为可复现记录，用于决定是否提升到 Canonical。
 
 ## 转入 Canonical 的条件
 

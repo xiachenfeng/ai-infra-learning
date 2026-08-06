@@ -12,7 +12,7 @@
 | CUDA Kernel | 5 | 2 | 2026-08-01 | 理解 kernel launch、线程全局索引和边界检查，能计算 launch 配置；尚未编写或分析真实 kernel |
 | CUDA Asynchronous Execution | 5 | 3 | 2026-08-04 | 能解释 eager 立即提交、GPU 异步执行和 CPU 同步等待；在 RTX 3090 上完成 CPU 同步计时与 CUDA Event 计时实验 |
 | CUDA Stream and Grid Concurrency | 4 | 3 | 2026-08-04 | 能分析 Stream/Event 依赖图，区分 wait 与 synchronize，并用 profiler 验证不同 Stream 允许但不保证充分并发 |
-| CUDA Tensor Lifetime Across Streams | 5 | 2 | 2026-08-06 | 能解释数据就绪与显存生命周期的区别、allocator Event 延迟回收链路和手动同步方案；双侧 Stream 迁移题与独立实验未完成 |
+| CUDA Tensor Lifetime Across Streams | 5 | 3 | 2026-08-07 | 能分析双侧 Stream、view alias、释放时已排队工作边界、`record_stream()` 保守性和手动 Event 替代方案；独立 GPU 实验未完成，暂不升 4 |
 | AllReduce | 5 | 2 | 2026-08-01 | 能用自己的语言解释数据并行中的梯度聚合与 AllReduce 的同步目的；尚未测试算法和通信分析 |
 | NCCL | 5 | 0 | - | 未测试 |
 | Tensor Parallel | 5 | 0 | - | 未测试 |
