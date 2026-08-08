@@ -81,6 +81,15 @@
 - 正确理解：`del x` 只删除一个 Tensor 引用。只要 `alias_x` 仍然持有同一 storage，底层显存不会进入 allocator 回收流程；真正触发回收的是最后一个持有该 Storage 的 Tensor/Storage 引用消失。`record_stream()` 绑定的是 Storage 与 Stream 的关系，不是变量名与 Stream 的关系。
 - 是否已复测：2026-08-07 当场复测通过。能够判断 `x.record_stream(s1)` 可以保护 `alias_x` 读取的同一块共享 storage。
 
+## 2026-08-09：只按显存读写判断跨 Stream 分配安全
+
+- 日期：2026-08-09
+- 知识点：CUDA caching allocator 的创建 Stream 语义
+- 原回答：如果 `torch.empty()` 不写显存，就可以删除创建 Stream `s0` 到消费者 Stream `s2` 的等待。
+- 错误原因：正确区分了地址分配与实际显存访问，但忽略 allocator 将分配和释放也视为带有 Stream 顺序的逻辑使用；缓存块可能仍依赖创建 Stream 上的旧操作完成。
+- 正确理解：Tensor 在 `s0` 分配后交给 `s2` 首次使用时，消费者通常需要 `s2.wait_stream(s0)`；若复用的同一显存还被旧 Tensor 在 `s1` 使用，则另需 `s2.wait_event(done)`。两条依赖分别保护创建 Stream 顺序和旧 Tensor 最后使用，不能互相替代。
+- 是否已复测：2026-08-09 当场通过。能把 `s2.wait_stream(s0)` 放在首次写入前，并说明它保护显存申请/创建到写入的顺序；同时保留 Event 依赖保证 `s1` 读完旧 `x`。
+
 每条错误应包含：
 
 - 日期

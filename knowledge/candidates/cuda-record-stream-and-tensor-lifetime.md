@@ -1,8 +1,8 @@
 # CUDA `record_stream()` 与跨 Stream Tensor 生命周期
 
 - Status: 候选知识，尚未验证
-- Evidence: `sessions/2026-08-06-cuda-record-stream-lifetime.md`, `sessions/2026-08-07-cuda-record-stream-transfer.md`
-- Last discussed: 2026-08-07
+- Evidence: `sessions/2026-08-06-cuda-record-stream-lifetime.md`, `sessions/2026-08-07-cuda-record-stream-transfer.md`, `sessions/2026-08-09-record-stream-and-memory-hierarchy.md`
+- Last discussed: 2026-08-09
 - Related canonical: `knowledge/canonical/cuda-streams-events-and-timing.md`
 
 ## 一句话定义
@@ -111,6 +111,8 @@ del x
 
 手动 Event 替代 `record_stream()` 时，Event 必须记录在侧 Stream 对该 Storage 的最后一次使用之后；等待点应尽量靠近生命周期释放边界，而不是提前挡住无关的独立工作。能精确证明最后使用点时，手动 Event 更精准；不能稳定证明最后使用点时，`record_stream()` 更省心但可能更保守。
 
+手动 Event 方案允许 allocator 在 CPU 侧先把同一地址重新分给新 Tensor，只要新 Tensor 的实际显存访问被排在旧 Tensor 最后使用之后；地址复用本身不等于覆盖已经发生。若新 Tensor 在非创建 Stream 上首次使用，还需单独建立创建 Stream 到消费者 Stream 的顺序，不能用“`torch.empty()` 不写显存”作为删除该依赖的通用理由。
+
 ## 常见误解
 
 - `record_stream()` 不是让侧 Stream 等待创建 Stream；
@@ -143,17 +145,20 @@ del x
 - 2026-08-07 能设计手动 Event 替代方案，指出 Event 应放在侧 Stream 最后一次使用之后，并能解释等待点放得过早会牺牲并发重叠；
 - 2026-08-07 能解释 `record_stream()` 的保守性：释放时 recorded Stream 上已排队的无关工作也可能延迟显存复用；
 - 关键机制已由 PyTorch 官方文档和 native allocator 源码结构支持。
+- 2026-08-09 能正确区分实验中的三类观察：地址复用只是风险条件，结果异常才是竞态实际发生的直接证据，未复用或结果正常均不能证明危险代码安全；
+- 2026-08-09 能比较 `record_stream()` 的 pending 延迟复用与手动 Event 的提前同址分配，并建立 `旧 s1 使用 -> done -> 新 s2 写入` 和 `创建 s0 -> 新 s2 首次使用` 两条依赖边；
+- 2026-08-09 复核 PyTorch 官方 `Tensor.record_stream()` 文档和 `CUDACachingAllocator.cpp` 顶层设计说明，确认释放时保护范围与 recorded Stream 工作完成条件。
 
 ## 尚未进入 Canonical 的原因
 
 - 尚未运行最小实验观察 `record_stream()` 对显存地址复用或 allocator 状态的影响；
-- 尚未独立追踪 PyTorch native allocator 源码中 `record_stream()`、Event 记录和 pending block 回收的关键路径；
+- 已完成官方 API 与 allocator 设计说明核验，但尚未逐函数追踪 `record_stream()`、Event 插入和 pending block 回收的完整实现路径；
 - 本次虽通过多道迁移题，但尚未形成可复现实验结果，因此暂不提升为 Canonical。
 
 ## 尚需完成的验证
 
 1. 完成最小 GPU 实验，对比缺少登记、使用 `record_stream()` 和手动 Event 三种方案；
-2. 追踪 PyTorch native CUDACachingAllocator 中 `record_stream()` 到 pending block 释放的关键路径；
+2. 可选：继续逐函数追踪 PyTorch native CUDACachingAllocator 中 `record_stream()` 到 pending block 释放的关键路径；
 3. 将实验或源码追踪结果整理为可复现记录，用于决定是否提升到 Canonical。
 
 ## 转入 Canonical 的条件

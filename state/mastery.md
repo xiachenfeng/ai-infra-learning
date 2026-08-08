@@ -7,12 +7,12 @@
 | Linux Process and Thread | 5 | 2 | 2026-08-01 | 理解进程隔离、线程共享上下文；未完整区分共享地址空间与线程私有栈、寄存器等状态 |
 | Virtual Memory | 5 | 1 | 2026-08-01 | 能识别页面置换和文件调入；缺少 TLB、页表、page fault 与非法地址处理的完整链路 |
 | Network Troubleshooting | 4 | 1 | 2026-08-01 | 能区分网络延迟与服务端 CPU/内存问题；尚未形成连接、重传、排队和依赖的分层指标体系 |
-| GPU Execution Model | 5 | 3 | 2026-08-06 | 间隔复测通过：能区分 512 个 Thread 逻辑实例与 16 个 Warp 硬件分组，并说明 Warp 不能跨 Block；部分 Warp 计算经引导后纠正 |
-| GPU Memory Hierarchy | 5 | 0 | - | 未测试 |
-| CUDA Kernel | 5 | 2 | 2026-08-01 | 理解 kernel launch、线程全局索引和边界检查，能计算 launch 配置；尚未编写或分析真实 kernel |
+| GPU Execution Model | 5 | 3 | 2026-08-09 | 能说明一次 kernel launch 对应一个 Grid，计算 Block/Thread 数量，并区分同 Stream 整 Grid 顺序与不同 Stream 缺少 happens-before |
+| GPU Memory Hierarchy | 5 | 2 | 2026-08-09 | 能识别 HBM 带宽瓶颈和算术强度，区分 register 线程私有、shared memory Block 私有、L2 跨 Block 自动缓存；层级延迟排序尚未闭卷完成 |
+| CUDA Kernel | 5 | 2 | 2026-08-09 | 能阅读 producer/consumer kernel 启动代码，计算 Grid/Block/Thread 数量并分析 kernel 边界；尚未独立编写和运行真实 kernel |
 | CUDA Asynchronous Execution | 5 | 3 | 2026-08-04 | 能解释 eager 立即提交、GPU 异步执行和 CPU 同步等待；在 RTX 3090 上完成 CPU 同步计时与 CUDA Event 计时实验 |
 | CUDA Stream and Grid Concurrency | 4 | 3 | 2026-08-04 | 能分析 Stream/Event 依赖图，区分 wait 与 synchronize，并用 profiler 验证不同 Stream 允许但不保证充分并发 |
-| CUDA Tensor Lifetime Across Streams | 5 | 3 | 2026-08-07 | 能分析双侧 Stream、view alias、释放时已排队工作边界、`record_stream()` 保守性和手动 Event 替代方案；独立 GPU 实验未完成，暂不升 4 |
+| CUDA Tensor Lifetime Across Streams | 5 | 3 | 2026-08-09 | 能分析地址复用实验、pending block、手动 Event 精确复用及创建 Stream/消费者 Stream 两条依赖边；官方资料已核验，独立 GPU 实验未完成，暂不升 4 |
 | AllReduce | 5 | 2 | 2026-08-01 | 能用自己的语言解释数据并行中的梯度聚合与 AllReduce 的同步目的；尚未测试算法和通信分析 |
 | NCCL | 5 | 0 | - | 未测试 |
 | Tensor Parallel | 5 | 0 | - | 未测试 |

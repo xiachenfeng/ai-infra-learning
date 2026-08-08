@@ -1,6 +1,6 @@
 # Current Learning State
 
-Last updated: 2026-08-07
+Last updated: 2026-08-09
 
 ## Long-term Goal
 
@@ -23,7 +23,7 @@ Last updated: 2026-08-07
 
 ## Current Focus
 
-完成多 Stream Tensor 生命周期、PyTorch CUDA caching allocator 与 `record_stream()` 的迁移复测；下一步用最小 GPU 实验验证显存复用行为，然后进入 GPU memory hierarchy。
+继续验证多 Stream Tensor 生命周期、PyTorch CUDA caching allocator 与 `record_stream()`；已进入 GPU memory hierarchy，当前学习片上复用、存储作用域和跨 Block 数据共享。
 
 ## Diagnostic Summary
 
@@ -54,7 +54,13 @@ Last updated: 2026-08-07
 - 能分析手动同步方案中等待位置对并发重叠的影响，并解释创建 Stream 上的后续写入为何不会覆盖侧 Stream 的未完成读取。
 - 通过 2026-08-07 复测，能闭卷区分 `record`/`wait_event` 队列操作与 `synchronize()` CPU 阻塞，并能分析双侧 Stream、view alias、手动 Event 替代方案和 `record_stream()` 的保守性。
 - 能说明 `record_stream()` 不是精确位置依赖，而是 Storage 对 Stream 的生命周期登记；保护范围取决于 Tensor 释放时 recorded Stream 上已排队的工作。
+- 设计并推演缺少生命周期登记、使用 `record_stream()` 和手动 Event 三种最小实验，能区分地址复用、实际显存访问与结果异常三类证据。
+- 通过 PyTorch 官方 API 文档和 native allocator 源码说明核验：`record_stream()` 会阻止 block 在 recorded Stream 工作完成前被复用；真实 GPU 实验仍待执行。
+- 能区分手动 Event 方案中的两条依赖边：旧 Tensor 在侧 Stream 的最后使用，以及新 Tensor 从创建 Stream 转交消费者 Stream 的 allocator 顺序。
+- 开始 GPU memory hierarchy：理解算术强度、HBM 带宽瓶颈、register 线程私有、shared memory 属于 Block、L2 可跨 Block 自动缓存。
+- 能说明一次 kernel launch 对应一个 Grid，多个 Block 可访问同一 global-memory 地址；普通 kernel 内 `__syncthreads()` 不能作为跨 Block barrier。
+- 能用同 Stream kernel 边界或跨 Stream Event 建立 producer Grid 到 consumer Grid 的执行顺序。
 
 ## Next Recommended Action
 
-完成 `record_stream()` 最小 GPU 实验，观察缺少登记、使用 `record_stream()` 和手动 Event 三种方案的显存复用行为；实验后若结论稳定，将 CUDA Tensor Lifetime 候选知识提升为 canonical，并进入 GPU memory hierarchy。
+在可用 NVIDIA GPU 环境运行 `record_stream()` 三版本最小实验，保存地址复用和结果正确性记录；同时继续 GPU memory hierarchy，完成 register、shared memory、L1/L2 与 HBM 的延迟、容量、作用域和优化题。

@@ -51,3 +51,35 @@ date,session,concept,question_type,difficulty,correctness,completeness,transfer,
 2026-08-06,cuda-record-stream,record_stream conservative release boundary,analysis,4,4,4,3,未提供,正确指出 record_stream 可能等待释放时 recorded Stream 上已提交的无关工作，体现保守性
 2026-08-07,cuda-record-stream,manual event wait placement and overlap,analysis,4,3,3,3,未提供,正确选择释放前等待以保留并发；经追问补全 A 会让 s0 后续独立工作在 GPU 执行顺序上等待 done
 2026-08-07,cuda-record-stream,mixed wait record alias concurrency diagnosis,diagnosis,5,4,4,4,未提供,正确区分 wait_stream 管数据就绪、只登记 s1 不保护 s2、record_stream 不会在调用处过早串行化 s0 独立工作
+2026-08-08,cuda-record-stream-experiment,reused pointer versus actual race,analysis,3,4,4,3,未提供,正确判断 data_ptr 复用只说明显存块复用，不等价于错误；是否出错取决于复用写入是否与侧 Stream 未完成读取重叠
+2026-08-08,cuda-record-stream-experiment,race reproduction knobs,analysis,3,3,3,2,未提供,正确判断延长侧 Stream 读取会提高风险、提前同步会降低风险；初答误判同尺寸分配并 fill 为无关，经引导后改为提高风险
+2026-08-08,cuda-record-stream-experiment,record_stream expected pointer reuse,analysis,3,4,3,3,未提供,正确预测 record_stream 会降低 del 后立刻同尺寸分配复用 x_ptr 的概率，因为 allocator 会延迟复用 recorded Stream 正在使用的 block
+2026-08-09,cuda-record-stream-experiment,manual event reuse safety,analysis,3,4,3,3,未提供,正确判断手动 Event 方案中 reused=True 仍安全，并给出 slow_read 完成 -> done 完成 -> s0 覆盖写入 的顺序；需注意 Event 只覆盖所在 Stream 上它之前的工作
+2026-08-09,cuda-record-stream-experiment,record_stream versus manual event immediate reuse,analysis,4,4,3,3,未提供,正确判断手动 Event 版本更可能立即复用同一地址；需将 record_stream 情况表述为 block 已释放给 allocator 但处于 pending 而非显存尚未释放
+2026-08-09,cuda-record-stream-experiment,negative run interpretation,analysis,3,4,3,3,未提供,正确判断 reused=False 且结果正常不能证明危险版本安全；可能只是本轮 allocator 恰好分配了其他显存块而未触发竞态
+2026-08-09,cuda-record-stream-experiment,experimental evidence classification,analysis,3,2,1,2,未提供,正确识别 reused=True 且 y 错误是竞态发生的直接证据；尚未分类 reused=True 但结果正常以及未复用且结果正常
+2026-08-09,cuda-record-stream-experiment,reuse without corruption interpretation,analysis,3,4,3,3,未提供,正确判断 reused=True 但 y 正常可能源于本轮实际执行顺序等价于先读后写；结果正常不代表缺失生命周期保护的代码安全
+2026-08-09,cuda-record-stream-experiment,manual event high reuse safety,analysis,4,3,2,2,未提供,正确判断手动 Event 版本复用率更高不能说明其不安全；尚需说明同址分配与 GPU 覆盖写入是两个时刻且 fill 已被 Event 依赖约束
+2026-08-09,cuda-record-stream-experiment,manual event same-address happens-before,analysis,4,4,3,3,未提供,正确说明 done Event 完成后才会执行 fill；已建立 slow_read -> done -> fill 的跨 Stream 顺序并区分地址分配与实际显存写入
+2026-08-09,cuda-record-stream-experiment,event wait consumer stream transfer,diagnosis,4,4,4,3,未提供,正确判断仅让 s0 wait_event(done) 不能约束 s2 上的 fill；版本仍存在 s1 读取与 s2 覆盖写入的竞态
+2026-08-09,cuda-record-stream-experiment,event wait repair placement,application,4,4,4,3,未提供,正确将 s2.wait_event(done) 放在 s2 的 fill 之前，使真正访问复用显存的消费者 Stream 等待 s1 最后一次读取完成
+2026-08-09,cuda-record-stream-experiment,allocation versus memory access dependency,transfer,4,3,3,3,未提供,正确识别地址分配与实际显存访问是两个时刻；但仅检查 torch.empty 是否写显存仍不完整，Tensor 从创建 Stream s0 转交 s2 使用时还需考虑 allocator 的创建 Stream 顺序，后经官方资料核验修正
+2026-08-09,cuda-record-stream-experiment,lifecycle registration versus explicit dependency,synthesis,4,4,4,4,未提供,正确区分 record_stream 通过登记显存块使用 Stream 影响 allocator 生命周期与手动 Event 通过插入跨 Stream 依赖约束实际访问顺序；需将染色术语落到 Storage 登记和 pending 延迟复用机制
+2026-08-09,cuda-record-stream-experiment,creation stream to consumer stream dependency,transfer,4,4,4,4,未提供,正确选择 s2.wait_stream(s0) 并放在 s2 的 fill 之前；理解消费者 Stream 应等待创建 Stream，使 allocator 所依赖的创建 Stream 顺序先于首次侧 Stream 使用
+2026-08-09,cuda-record-stream-experiment,two dependency edges for reused storage,analysis,4,3,3,3,未提供,正确判断不能删除 s2.wait_event(done)，因为必须保证 s1 读完旧 x 后 s2 才能覆盖；尚未明确 s2.wait_stream(s0) 保护创建 Stream 到首次侧 Stream 使用的 allocator 顺序
+2026-08-09,cuda-record-stream-experiment,allocator creation order versus old-use order,synthesis,4,4,4,4,未提供,正确说明 s2.wait_stream(s0) 保护显存申请与首次写入顺序，并与 s2.wait_event(done) 保护旧 x 在 s1 上最后读取的依赖边区分开
+2026-08-09,gpu-memory-hierarchy,bandwidth-bound kernel intuition,concept,2,3,2,1,未提供,正确识别少计算且大量读取 HBM 的 kernel 更可能受显存带宽限制；尚未用数据搬运量与计算量的比例解释原因
+2026-08-09,gpu-memory-hierarchy,hbm data wait explanation,concept,2,3,2,2,未提供,经引导识别主要耗时在读取和搬运 HBM 数据；需继续练习用算术强度完整表达带宽瓶颈
+2026-08-09,gpu-memory-hierarchy,arithmetic intensity comparison,analysis,2,4,4,3,未提供,正确选择复用同样 4 bytes 完成 100 次运算的 kernel B，并以更高算术强度解释其更可能转向计算能力受限
+2026-08-09,gpu-memory-hierarchy,shared-memory-hbm-traffic,concept,2,4,3,3,未提供,正确选择将数据从 HBM 搬入 shared memory 后供 block 内线程复用，并指出核心收益是减少显存读取
+2026-08-09,gpu-memory-hierarchy,shared-memory-scope-lifetime,concept,2,4,4,3,未提供,正确说明 shared memory 属于单个 thread block，其他 block 不能直接读取，生命周期持续到该 block 结束
+2026-08-09,gpu-memory-hierarchy,register-versus-shared-placement,analysis,2,4,3,3,未提供,正确将线程私有累加器放 registers、block 共享 tile 放 shared memory；但判断理由偏向复用次数，需优先依据线程私有性与 block 内共享需求
+2026-08-09,gpu-memory-hierarchy,register-thread-private-scope,concept,2,4,3,2,未提供,正确判断单个线程的 register 不能供同 block 其他线程直接读取，并识别 register 的线程私有属性；用户表达为猜测，需继续巩固
+2026-08-09,gpu-memory-hierarchy,l2-cross-block-cache,concept,2,4,3,2,未提供,正确识别 L2 cache 可自动缓存 global-memory 数据并服务不同 block；用户带疑问作答，需通过层级对比巩固
+2026-08-09,gpu-memory-hierarchy,cross-block-sharing-and-synchronization,application,3,4,4,3,未提供,正确判断 __syncthreads 仅同步 block 内线程，不能作为普通 kernel 中不同 block 之间的全 grid barrier
+2026-08-09,gpu-execution-model,kernel-grid-block-thread-launch,concept,2,4,4,4,未提供,正确计算 kernel<<<8 256>>> 对应 1 个 grid、8 个 blocks、2048 个 threads，掌握 kernel launch 与执行层级关系
+2026-08-09,gpu-execution-model,same-stream-kernel-grid-ordering,concept,2,3,3,2,未提供,正确联想到同一 Stream 顺序执行但对 kernel 级排序边界不确定；经说明明确后续 kernel 等待前一 kernel 整个 grid 的全部 blocks 完成
+2026-08-09,gpu-execution-model,cross-stream-kernel-ordering,analysis,3,4,4,3,未提供,正确判断不同 Stream 上的 produce 与 consume 没有顺序保证；需将顺序可能乱精确表述为缺少 happens-before 因而可能重叠或任意先后
+2026-08-09,gpu-execution-model,cross-stream-event-placement,application,3,3,3,3,未提供,正确将 Event record 与 wait 都放在 produce 提交后、consume 提交前的位置 A；尚未明确应先在 stream1 record 再让 stream2 wait
+2026-08-09,gpu-execution-model,cross-stream-event-record-wait-order,application,3,4,4,3,未提供,正确选择先在 stream1 上 cudaEventRecord 标记 produce 完成位置，再让 stream2 等待该 Event 后提交 consume
+2026-08-09,gpu-memory-hierarchy,latency-capacity-trend,concept,2,2,3,2,未提供,正确回答沿存储层级向外容量通常逐渐变大；尚未给出 register shared memory L2 HBM 的延迟排序
