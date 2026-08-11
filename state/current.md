@@ -1,6 +1,6 @@
 # Current Learning State
 
-Last updated: 2026-08-09
+Last updated: 2026-08-11
 
 ## Long-term Goal
 
@@ -23,7 +23,7 @@ Last updated: 2026-08-09
 
 ## Current Focus
 
-继续验证多 Stream Tensor 生命周期、PyTorch CUDA caching allocator 与 `record_stream()`；已进入 GPU memory hierarchy，当前学习片上复用、存储作用域和跨 Block 数据共享。
+继续 GPU memory hierarchy，当前聚焦 tiled transpose 中的 row-major 映射、Shared Memory 访问重排、coalescing、Block/tile 两层转置和 bank conflict；`record_stream()` 真实 GPU 实验仍待执行。
 
 ## Diagnostic Summary
 
@@ -60,7 +60,13 @@ Last updated: 2026-08-09
 - 开始 GPU memory hierarchy：理解算术强度、HBM 带宽瓶颈、register 线程私有、shared memory 属于 Block、L2 可跨 Block 自动缓存。
 - 能说明一次 kernel launch 对应一个 Grid，多个 Block 可访问同一 global-memory 地址；普通 kernel 内 `__syncthreads()` 不能作为跨 Block barrier。
 - 能用同 Stream kernel 边界或跨 Stream Event 建立 producer Grid 到 consumer Grid 的执行顺序。
+- 完成 Register、Shared Memory、L2、HBM 的典型延迟和容量排序，能区分 Thread 私有、Block 共享、全 GPU 缓存和设备显存。
+- 能计算 Shared Memory tile 复用将 HBM 读取量降至原来的 `1/8`，并判断无复用且不改善访问模式时 staging 可能更慢。
+- 能用 row-major 地址分布判断 Warp global-memory coalescing，并区分逻辑 load/store 数量与物理内存事务数量。
+- 经引导后能用 profiler 指标区分数据复用与访问重排：HBM 字节下降对应复用，字节基本不变但事务下降对应 coalescing 改善。
+- 初步理解 Shared Memory bank 的模 32 映射，能区分同地址广播与同 bank 不同地址冲突；stride-32 与 padding 的迁移分析待复测。
+- 保存了可处理非整 tile 边界的 padded tiled-transpose CUDA 示例，并通过 `45×70` CPU 索引模拟；本机缺少 `nvcc`，尚未实机编译和 profiler 验证。
 
 ## Next Recommended Action
 
-在可用 NVIDIA GPU 环境运行 `record_stream()` 三版本最小实验，保存地址复用和结果正确性记录；同时继续 GPU memory hierarchy，完成 register、shared memory、L1/L2 与 HBM 的延迟、容量、作用域和优化题。
+从 `examples/cuda/tiled_transpose.cu` 继续：先闭卷回答输入 `blockIdx=(2,3)` 到输出 tile 的坐标映射，再推导 `tile[32][32]` 与 `tile[32][33]` 的 bank 编号；在 NVIDIA GPU 上编译运行并用 profiler 比较 naive、unpadded 和 padded 版本。随后完成 `record_stream()` 三版本真实 GPU 实验。
