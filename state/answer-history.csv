@@ -116,3 +116,18 @@ date,session,concept,question_type,difficulty,correctness,completeness,transfer,
 2026-08-11,gpu-memory-hierarchy,bank-conflict-vs-broadcast,analysis,2,2,2,1,未提供,正确判断 stride-32 访问全部映射到 Bank 0；误认为 word t乘32 是同一地址并会广播，未区分同 bank 不同地址与完全相同地址
 2026-08-11,gpu-memory-hierarchy,stride-32-word-address-calculation,calculation,1,0,0,0,未提供,再次误认为 Thread 0 1 2 访问的 word 0 32 64 是相同地址；尚未区分完整 word 地址与取模后的 bank 编号
 2026-08-11,gpu-memory-hierarchy,broadcast-vs-bank-conflict-retest,concept,2,4,4,2,未提供,正确判断所有 Thread 读取 word 0 属于同地址广播，而 Thread t 读取 word t乘32 属于不同地址映射到同一 Bank 0 的冲突
+2026-08-12,gpu-memory-hierarchy,tiled-transpose-block-coordinate-swap,code-reading,3,4,4,3,70,正确判断输入 tile (row=3 col=2) 转置后移动到输出 tile (row=2 col=3)，并说明 tile 的行列坐标也需交换
+2026-08-12,gpu-memory-hierarchy,tiled-transpose-local-coordinate-swap,concept,2,4,4,3,未提供,正确判断只交换 Block 坐标会保留 tile 内原排列，完整转置还需要交换 tile 内部的行列索引
+2026-08-14,gpu-execution-model,2d-thread-to-warp-and-lane,calculation,2,4,4,3,未提供,"正确计算 blockDim=(32,8) 中 threadIdx=(17,6) 的线性编号为 209、Warp 编号为 6、Lane 编号为 17"
+2026-09-13,relearn-cpu-gpu,async-completion-vs-cpu-progress,analysis,2,4,3,2,未提供,正确判断 GPU 在 CPU 第20ms打印日志前已完成；未按题目要求说明5ms与20ms的时间依据。简单时间线判断不作为高迁移能力证据。
+2026-09-13,relearn-cpu-gpu,independent-cpu-work-during-gpu-execution,application,2,3,2,2,未提供,正确判断解析请求B不必等待GPU请求A；理由为都是异步执行的，尚未明确B不使用A结果这一独立性条件，进入引导澄清。
+2026-09-15,relearn-thread-index,one-dimensional-block-local-to-global-index,application,2,4,4,2,未提供,无；独立写出2×4+1=9。简单编号应用，不作为高迁移能力证据。
+2026-09-15,relearn-thread-index,warp-index-thread-70,application,2,2,4,1,未提供,分组方法正确；首次混淆第3组与编号3，提示后修正为2。保留首次评分。
+2026-09-15,relearn-thread-index,warp-index-thread-105,application,2,4,4,2,未提供,无；独立判断105除以32取整数部分为3。
+2026-09-15,relearn-thread-index,partial-warp-logical-thread-count-70,analysis,2,4,4,2,未提供,无；独立否定3个Warp等于96个实际线程，指出最后一个未完全使用。
+2026-09-15,relearn-thread-index,warp-count-block-boundary-64,analysis,2,4,4,3,未提供,无；正确比较A为2个Warp与B为4个，并解释Block内独立分组。
+2026-09-15,relearn-thread-index,lane-index-thread-83,application,2,4,4,2,未提供,无；独立回答19并写出83=2*32+19，正确以余数确定Lane。
+2026-09-15,relearn-thread-index,2d-linear-index-width8-x3-y2,application,2,0,2,0,未提供,首次回答26，编号错误且未给出要求的算式，错误原因尚不能仅由首次回答确定。提示中沿用上一题2*4+1=9；条件对照后修正为2*8+3=19。保留首次评分。
+2026-09-15,relearn-thread-index,2d-linear-index-width6-x4-y2,application,2,4,4,2,未提供,无；独立回答2*6+4=16，正确使用x方向大小作为行宽。
+2026-09-15,relearn-thread-index,2d-warp-lane-width8-x2-y6,application,2,3,4,2,未提供,线性编号50及Lane18正确，首次Warp编号误答2；提示分解50后修正为Warp1。保留首次评分。
+2026-09-15,relearn-thread-index,2d-warp-lane-width8-x5-y9,application,2,4,3,2,未提供,三个编号77、2、13均正确；未提供题目明确要求的算式。独立完成，教师补充算式不作为用户独立推导证据。

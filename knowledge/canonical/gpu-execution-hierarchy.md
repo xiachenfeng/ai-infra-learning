@@ -1,8 +1,16 @@
+---
+aliases: [GPU 执行层级, Grid Block Thread Warp]
+tags: [ai-infra, cuda]
+status: canonical
+created: 2026-08-03
+updated: 2026-09-15
+---
+
 # GPU Execution Hierarchy
 
 - Status: 正式知识
-- Evidence: `sessions/2026-08-01-gpu-execution-model.md`, `sessions/2026-08-03-gpu-hierarchy-review.md`
-- Last verified: 2026-08-03
+- 历史证据：[[sessions/2026-08-01-gpu-execution-model|首次学习]]、[[sessions/2026-08-03-gpu-hierarchy-review|层级复习]]
+- 历史验证日期：2026-08-03；2026-09-15 补充编号与分组证据，未重验其余全部主题。
 
 ## 一句话定义
 
@@ -14,9 +22,9 @@
 
 ## 前置知识
 
-- CPU 负责发起 GPU 工作。
+- [[knowledge/canonical/cuda-streams-events-and-timing|CPU 提交与 GPU 异步执行]]：提交和完成是不同事件。
 - Kernel 是由大量 GPU Thread 执行的函数。
-- 本卡只讨论一维 launch；二维、三维索引是同一模型的扩展。
+- 本卡索引公式限定一维 launch；二维扩展见 [[knowledge/candidates/2d-thread-warp-lane-mapping|二维编号候选卡]]。
 
 ## 核心机制
 
@@ -36,10 +44,14 @@ Warp 不能跨 Block 组合。若一个 Block 有 48 个 Thread，硬件仍形�
 
 准确的关系是：
 
-```text
-Grid → Block → Thread
-          └─ Block 内的 Thread 被硬件划分为 Warp
+```mermaid
+flowchart TB
+    G["Grid"] -->|"包含"| B["Block"]
+    B -->|"包含"| T["逻辑 Thread"]
+    T -->|"同一 Block 内每32个分组"| W["Warp"]
 ```
+
+图注：箭头表示包含或分组关系，不表示执行先后；Warp 不是额外创建的一批 Thread。
 
 ### Block 同步边界
 
@@ -55,49 +67,56 @@ Grid → Block → Thread
 
 ## 系统流程
 
-```text
-CPU 发起 kernel launch
-        ↓
-创建一个 Grid
-        ↓
-Grid 划分为多个 Block
-        ↓
-Block 中包含多个 Thread
-        ↓
-硬件把 Block 内的 Thread 组成 Warp 执行
+```mermaid
+flowchart LR
+    C["CPU 发起 launch"] -->|"创建"| G["一个 Grid"]
+    G -->|"包含"| B["多个 Block"]
+    B -->|"各自组织"| W["各 Block 的 Warp"]
 ```
+
+图注：第一条箭头表示提交，其余表示工作组织，不表示 CPU 等待 GPU 完成或 Block 顺序执行。
 
 ## 复杂度与性能影响
 
-- 总 Thread 数至少要覆盖数据规模，超出的 Thread 必须经过边界检查。
+- 对每线程只处理一个元素的简单映射，线程数需覆盖数据规模，超出的 Thread 必须经过边界检查；循环处理多个元素的 kernel 不受这一对一假设限制。
 - Thread 数不是 32 的整数倍时，最后一个 Warp 可能只有部分有效 Thread。
 - 同一 Warp 内的分支发散会降低执行资源利用率。
 - Warp 不会跨 Block 拼接，因此两个各含 16 个 Thread 的 Block 会各自形成一个部分有效的 Warp。
 
-## 最小示例
+## 数学表达与最小示例
 
-```cpp
-kernel<<<2, 64>>>();
-```
+限定一维 Grid、一维 Block，每个 Block 有相同的 $T>0$ 个线程。采用每线程处理一个元素、各 Block 连续分段的映射，编号从 0 开始：
 
-它创建 2 个 Block，每个 Block 有 64 个 Thread，共 128 个 Thread。若 Warp 大小为 32，则每个 Block 有 2 个 Warp，总计 4 个 Warp。
+$$
+i=bT+t
+$$
 
-一维全局索引与边界检查：
+$b$ 为 Block 编号，$t$ 为 Block 内线程编号，$i$ 为本例负责的全局元素编号，均为无量纲整数。Block 2、每 Block 4 线程、局部编号 1 时，$i=2\times4+1=9$。
 
-```cpp
-int i = blockIdx.x * blockDim.x + threadIdx.x;
-if (i < n) {
-    output[i] = input[i] * 2;
-}
-```
+NVIDIA CUDA 使用 32 线程的 Warp。本文按 Block 内连续线程分组定义逻辑 Warp 编号 $w$ 和 Lane $\ell$：
 
-处理 1000 个元素、每个 Block 256 个 Thread 时：
+$$
+w=\left\lfloor\frac{t}{32}\right\rfloor,\qquad \ell=t-32w
+$$
 
-```cpp
-int blocks = (1000 + 256 - 1) / 256;  // 4
-```
+例如 $t=83=2\times32+19$，因此 $w=2$、$\ell=19$。第 3 组的编号是 2；Lane 是 Warp 内位置，不是物理核心编号。
 
-实际启动 1024 个 Thread，最后 24 个不处理有效元素。
+每个 Block 所需的 Warp 数为：
+
+$$
+N_{\mathrm{warp,block}}=\left\lceil\frac{T}{32}\right\rceil
+$$
+
+一个 Block 有 70 线程时，分为 32、32、6，共 3 个 Warp，逻辑线程仍是 70 个。尾 Warp 的未使用位置与额外启动线程后跳过数据操作是两回事。
+
+| 相同总线程数的两种组织 | 每 Block 的 Warp 数 | 总 Warp 数 |
+|---|---:|---:|
+| 1 个 Block，每个 64 线程 | 2 | 2 |
+| 4 个 Block，每个 16 线程 | 1 | 4 |
+
+图表重点：各 Block 内分别计数，再求和，不能把不同 Block 的空缺位置拼满。
+
+另一个逐元素映射示例：处理 1000 个元素、每 Block 256 线程，需要 4 个 Block，共启动 1024 个真实逻辑线程，最后 24 个由边界检查跳过数据操作。
 
 ## 常见误解
 
@@ -119,7 +138,9 @@ int blocks = (1000 + 256 - 1) / 256;  // 4
 
 ## 代码或实验
 
-本次完成了索引、Thread 数和 Warp 数的推导，尚未运行真实 CUDA/PyTorch GPU 实验。
+完整的一维教学实现见 [[examples/cuda/thread_block_grid.cu|逐元素加10源码]]：`add_ten` 显式计算 Block 起点与全局索引，`launch_add_ten` 配置每 Block 4 线程，`main` 提供内存准备、同步和输出校验。
+
+本轮仅核对索引和预期输出；本机无 nvcc，未进行该示例的 CUDA 编译和 GPU 执行。历史其他主题的 GPU 实验不能替代本示例验证。
 
 ## 我曾经答错的地方
 
@@ -138,8 +159,18 @@ int blocks = (1000 + 256 - 1) / 256;  // 4
 
 ## 待验证内容
 
+### 本轮补充证据与后续验证
+
+[[sessions/2026-09-15-thread-index-relearning|2026-09-15 编号与分组复习]] 中，独立计算全局编号9、Thread105的Warp3、Thread83的Lane19；独立解释70线程的尾Warp未填满，以及64线程两种Block布局的Warp数分别为2和4。
+
+Warp 编号曾混淆“第几组”和零基编号；提示后修正与新题独立复测分别保存。整体掌握度保持3，不把简单计算等同于调试能力。历史分支和同步内容待 R2 后续重验。
+
+二维换算已通过基本计算复测，但独立解释证据仍待补，见 [[knowledge/candidates/2d-thread-warp-lane-mapping|二维编号候选卡]]。
+
 - Occupancy、寄存器和 shared memory 如何共同限制 SM 上的驻留 Block/Warp 数量。
 
 ## 参考资料
 
-待后续学习时补充 NVIDIA CUDA Programming Guide 对应章节。
+- [NVIDIA CUDA 12.6 Thread Hierarchy](https://docs.nvidia.com/cuda/archive/12.6.0/cuda-c-programming-guide/index.html#thread-hierarchy)：层级与索引规则。
+- [NVIDIA Advanced Kernel Programming](https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html)：Warp 分组与执行机制。
+- 本轮新增公式、Mermaid 和 wikilink 做静态检查；未在 Obsidian 实际预览。

@@ -1,10 +1,20 @@
 # Current Learning State
 
-Last updated: 2026-08-11
+Last updated: 2026-09-15（已保存；R2编号复测通过，下一课Warp内分支）
 
 ## Long-term Goal
 
-在 6 个月内系统理解大模型训练与推理基础设施，达到 AI Infra 入门岗位所需水平，重点具备读懂并修改训练/推理框架代码的能力。
+在 6 个月内建立 AI Infra 整体知识地图，以推理基础设施为深入主线，在一个框架中完成问题定位、局部修改和验证。训练方向保留核心概念和按需补充内容。
+
+## Confirmed Learning Preferences
+
+- 2026-09-13 用户确认选择推理主线。
+- 新知识默认先讲机制并完整示范，再引导练习和独立检查；不能每次上来直接考尚未讲解的内容。
+- 2026-09-13 用户明确希望尽可能多的图例：适合视觉表达的新机制默认配图，复杂过程拆为连续小图，状态变化优先用可逐步查看的交互图。先解释图例再练习，并对应到真实代码。
+- 前置诊断只检查直接相关且已有记录无法确认的知识；用户要求讲解时立即讲解，不要求先答错。
+- 2026-09-13 用户要求将此前学过的全部知识按新方法从头重学。增加连贯讲解与视觉示范，减少零碎提问；仍保留少量独立检查。
+- 2026-09-13 用户确认知识库以 Obsidian 阅读：内部引用使用 wikilink，数学用原生 MathJax 语法，图形要求美观、清晰且可在笔记中独立阅读。具体规范见 AGENTS.md，旧知识随重学修订逐步迁移。
+- 用户反馈聊天中的行内公式出现乱码；聊天计算改用普通文本或代码格式，Obsidian 知识卡仍按原生数学规范沉淀。显示问题不计为答错。
 
 ## Learner Context
 
@@ -19,11 +29,11 @@ Last updated: 2026-08-11
 
 ## Current Stage
 
-初始化完成，进入第 1 阶段：系统与 GPU 执行基础。
+启动第二轮系统重学，暂缓原“Phase 1 收尾后直接进入 PyTorch”的安排。详见 `sessions/2026-09-13-relearning-plan.md`；R1 已讲解、独立验收待复核，当前进入 R2，本轮 0/8 单元完成验收。历史掌握度和产物保留，不清零；新版课程进度待按验收证据核对。
 
 ## Current Focus
 
-继续 GPU memory hierarchy，当前聚焦 tiled transpose 中的 row-major 映射、Shared Memory 访问重排、coalescing、Block/tile 两层转置和 bank conflict；`record_stream()` 真实 GPU 实验仍待执行。
+R2 已完成一维与二维编号、Warp/Lane、部分Warp与Block分组边界的基础应用检查。下一课从完整代码和图例讲解Warp内分支执行，再练习与独立检查。R1数据依赖与二维编号解释放入间隔复习；本轮尚无新GPU实验。
 
 ## Diagnostic Summary
 
@@ -69,4 +79,6 @@ Last updated: 2026-08-11
 
 ## Next Recommended Action
 
-从 `examples/cuda/tiled_transpose.cu` 继续：先闭卷回答输入 `blockIdx=(2,3)` 到输出 tile 的坐标映射，再推导 `tile[32][32]` 与 `tile[32][33]` 的 bank 编号；在 NVIDIA GPU 上编译运行并用 profiler 比较 naive、unpadded 和 padded 版本。随后完成 `record_stream()` 三版本真实 GPU 实验。
+下次先讲Warp内分支执行，提供完整相关代码及分步图示；不继续重复编号算术题。二维组合复测已独立答对77、2、13，算式未提供已按要求记录。2026-09-18起间隔复习零基编号、二维行宽解释和R1数据依赖。R2整体未验收，重学完成数仍0/8；GPU Execution Model维持3。
+
+本次记录：[[sessions/2026-09-15-thread-index-relearning]]。正式知识已更新 [[knowledge/canonical/gpu-execution-hierarchy]]；二维独立解释证据待补，保存在 [[knowledge/candidates/2d-thread-warp-lane-mapping]]。未在Obsidian实际预览；未完成新CUDA实机验证。

@@ -7,84 +7,91 @@
 - 曾修改 XGBoost C++ 推理代码并提供线上服务。
 - Linux、网络和分布式系统有使用经验，但缺少系统性研究。
 - CUDA 和 GPU 内部执行模型接近零基础。
-- 目标是在 6 个月内具备训练/推理基础设施岗位的入门能力，重点是读懂并修改框架代码。
+- 目标是在 6 个月内建立 AI Infra 整体知识地图，以推理基础设施为深入主线，在一个框架中完成问题定位、局部修改和验证。
 - 每周投入 3–4 小时，采用“先理解原理，再动手验证”的方式。
 - 实验环境按需租赁中国大陆 NVIDIA GPU 云实例。
 
 ## Learning Principles
 
 1. 每周只设一个主主题，避免在有限时间内铺得过宽。
-2. 原理、代码、资料阅读的默认比例为 50% / 40% / 10%；论文仅在能解释关键设计时精读。
+2. 新知识采用“讲解 → 完整示范 → 引导练习 → 独立测评 → 小结”；原理、代码、资料阅读比例作为参考，论文仅在能解释关键设计时精读。
 3. 每个主题必须形成可验证产物：口头解释、代码追踪、最小实验或框架改动。
-4. 优先补齐阅读 PyTorch、CUDA、NCCL、分布式训练和推理框架源码所需的知识。
+4. 优先补齐阅读 PyTorch、CUDA 和 vLLM 所需的知识；NCCL 和训练知识按推理项目需要补充。
 5. 已有的 TensorFlow、XGBoost 和推荐模型经验作为迁移基础，不重复学习通用机器学习课程。
+6. 每阶段以独立应用题和指定产物验收，达到条件后前进；深入边界问题进入选修，不要求全部知识点达到掌握度 4。
+7. 24 周对应 72–96 小时有效学习预算，包含环境准备、实验、复习和整理；中断后从实际位置继续，不按日历周数自动推进或重学已完成内容。
+8. 默认使用单卡小模型完成推理项目；固定框架版本并记录环境。环境阻塞时可推进独立的代码阅读，但不得把预测或 CPU 模拟记为 GPU 实测。
+9. 默认通过图例介绍适合视觉表达的知识：结构用框图，布局用小矩阵，异步执行用时间线，缓存和调度用逐步状态图；每张图只讲一个重点，由教师先示范，再映射回真实代码和规模。
 
 ## Six-Month Path
 
 ### Phase 1（第 1–4 周）：系统与 GPU 执行基础
 
-- Linux 进程、线程、虚拟内存和性能分析
+- 按实验需要补充 Linux 进程、线程和内存基本概念
 - CPU/GPU 异构执行流程
 - CUDA thread、warp、block、grid
-- GPU memory hierarchy、同步和基本 kernel
+- GPU memory hierarchy、基本同步、连续访存和最小 kernel
 - 使用 profiler 建立“现象—指标—瓶颈”的分析方法
+- 从一个已运行的 PyTorch 算子开始定位源码入口，不要求立即读懂全部实现
 
-阶段产物：能够解释一个 CUDA/PyTorch 算子如何在 GPU 上执行，并完成一次基础性能分析。
+阶段产物与验收：独立解释一个 CUDA/PyTorch 算子的执行与同步关系，保存可复现的 GPU 计时代码、环境和一次 profiler 分析。已有合格产物可以复用，不要求重做；复杂 allocator 生命周期和完整 transpose 优化不作为本阶段出口条件。
 
 ### Phase 2（第 5–8 周）：PyTorch 与算子实现
 
-- PyTorch eager execution、autograd、dispatcher 和 ATen
+- PyTorch eager execution、dispatcher 和 ATen；autograd 只建立基本调用关系
 - Python 调用如何进入 C++/CUDA 实现
 - Tensor、内存布局、算子注册与设备分发
-- 编写和调试最小 PyTorch C++/CUDA extension
+- 在已定位算子或最小 extension 中完成一处有明确行为的修改，避免将完整源码构建变成独立大任务
 - 对照 TensorFlow/XGBoost 理解框架边界
 
-阶段产物：能够追踪一个 PyTorch 算子的完整调用链，并完成一个小型算子修改。
+阶段产物与验收：记录固定版本下一个算子的 Python → C++/CUDA 关键调用路径，独立解释数据布局，并完成一次有正确性检查的小型修改。
 
-### Phase 3（第 9–12 周）：分布式训练基础
+### Phase 3（第 9–12 周）：单卡大模型推理与测量
 
-- Data Parallel 与 DistributedDataParallel
-- collective communication：Broadcast、Reduce、AllReduce、AllGather、ReduceScatter
-- Ring AllReduce、带宽与延迟模型
-- NCCL 的 communicator、拓扑和调试方法
-- checkpoint、故障恢复和训练一致性
+- 从最小 Transformer 前向与自回归生成理解 Prefill、Decode
+- KV Cache 的作用、容量估算和请求生命周期
+- 部署一个单卡小模型 vLLM 服务
+- 区分排队、首 token 延迟、后续 token 间隔、吞吐和尾延迟
+- 固定输入/输出长度和测量口径，改变并发数完成小规模对比
 
-阶段产物：运行并分析一个多 GPU DDP 训练任务，能够定位基础通信问题。
+阶段产物与验收：保存可复现的启动与测量脚本、环境和结果；独立解释一组并发变化下的延迟、吞吐与显存现象，区分观察事实与待验证原因。
 
-### Phase 4（第 13–16 周）：大模型训练并行
+### Phase 4（第 13–16 周）：推理调度与框架源码
 
-- Tensor Parallel、Pipeline Parallel、Sequence Parallel
-- ZeRO、FSDP 与参数/梯度/优化器状态分片
-- activation checkpointing 与显存估算
-- DeepSpeed、Megatron-LM 或 PyTorch FSDP 源码路径
-- 计算、通信和显存之间的权衡
+- Continuous Batching 与每轮调度的 token 预算
+- KV Cache block 管理与 Paged Attention 的基本设计，不要求独立实现高性能 attention kernel
+- 追踪固定版本 vLLM 中一条请求从调度到模型执行、缓存回收的关键路径
+- 为一个有限问题添加必要观测，比较配置变化前后的行为
 
-阶段产物：读懂一种并行策略的关键实现，并对小模型完成配置或局部修改。
+阶段产物与验收：给出带文件位置的源码路径和一次实际运行证据，独立解释一个调度/缓存取舍，并选定综合项目中的一个小问题。
 
-### Phase 5（第 17–20 周）：大模型推理系统
+### Phase 5（第 17–20 周）：训练知识地图与推理项目初版
 
-- Prefill 与 Decode
-- KV Cache 的布局、容量和带宽影响
-- Continuous Batching、Paged Attention
-- Quantization、Speculative Decoding
-- vLLM 请求调度、模型执行和 cache management 源码
+- 用最多约 3–4 小时建立训练地图：前向/反向/更新、DDP 梯度同步、FSDP 分片、checkpoint；不要求全面阅读训练框架源码或租多卡作为主线验收
+- 从 Phase 4 的问题形成最小复现、基线和明确验收条件
+- 完成一项推理框架的局部功能、正确性或可观测性修改
+- 项目需要时补充 Tensor Parallel/NCCL、量化或系统概念；每次只选直接相关内容
 
-阶段产物：部署一个小型 vLLM 服务，分析吞吐与延迟，并追踪或修改一条核心代码路径。
+阶段产物与验收：能够解释训练与推理的主要状态和同步差别；推理项目有可运行初版、变更 diff 和针对该问题的验证结果。
 
-### Phase 6（第 21–24 周）：综合源码项目与岗位准备
+### Phase 6（第 21–24 周）：项目验证、整理与缓冲
 
-- 训练或推理框架中的真实问题定位
-- observability、benchmark、容量和成本分析
-- Docker、Kubernetes/Slurm/Ray 的必要概念
-- 选择一个小型功能、性能问题或可观测性问题完成修改
-- 整理设计说明、实验数据和源码阅读记录
+- 完成推理项目的正确性、边界场景与必要性能检查
+- 保存可复现环境、基线和修改后结果，说明观测开销或其他取舍
+- 整理问题、源码定位、设计选择和证据；形成可展示的项目说明
+- 预留时间处理环境、调试和前期未完成的必要实验，不再扩展新框架
 
-阶段产物：完成一个可展示的框架级修改，并能解释其设计、验证方法和性能影响。
+阶段产物与验收：完成一个范围明确、可复现的推理框架修改，能够独立解释设计、验证方法和结果边界；性能提升不是所有项目的必需结论。
 
 ## Deferred Topics
 
-以下内容保留在知识地图中，但不作为前 4 个月主线：
+以下内容保留在知识地图和已有记录中，作为选修，不阻塞主线：
 
+- allocator 内部机制、复杂多 Stream 生命周期组合题和手动 Event 替代方案优化
+- tiled transpose 的完整优化、bank padding 深入推导及高性能 kernel 开发
+- Ring AllReduce 详细推导、NCCL 拓扑调优、多卡 DDP 实验
+- ZeRO/FSDP、Pipeline/Sequence Parallel 的深入实现与训练故障恢复
+- 多 GPU 推理、量化和 Speculative Decoding 的深入实现（项目需要时选择其中一项）
 - 深入网络协议实现与内核网络栈
 - 文件系统和存储引擎细节
 - Kubernetes、Slurm、Ray 的生产级运维
